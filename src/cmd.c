@@ -98,6 +98,17 @@ int register_hook_cmd(const char *cmd, unsigned int (*func)(callbackp *), void *
 	return 1;
 }
 
+void free_all_hook_cmd(acetables *g_ape)
+{
+	while (g_ape->cmd_hook.head != NULL) {
+		callback_hook *prev = g_ape->cmd_hook.head;
+		g_ape->cmd_hook.head = g_ape->cmd_hook.head->next;
+		free(prev);
+	}
+
+	g_ape->cmd_hook.foot = NULL;
+}
+
 int call_cmd_hook(const char *cmd, callbackp *cp, acetables *g_ape)
 {
 	callback_hook *hook;

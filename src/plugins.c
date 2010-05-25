@@ -115,7 +115,7 @@ void free_all_plugins(acetables *g_ape)
 
 		prev = g_ape->plugins;
 		g_ape->plugins = g_ape->plugins->next;
-		free(g_ape->plugins);
+		free(prev);
 	}
 }
 

@@ -164,6 +164,13 @@ void timers_free(acetables *g_ape)
 	while (timers != NULL) {
 		prev = timers;
 		timers = timers->next;
+
+		if (!prev->protect) {
+			free(prev->params);
+		}
+
 		free(prev);
 	}
+
+	g_ape->timers.timers = NULL;
 }

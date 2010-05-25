@@ -138,6 +138,7 @@ unsigned int cmd_proxy_write(struct _callbackp *);
 ///////////////////////////////////////////////////////////////////////////////////////////////
 int process_cmd(json_item *ijson, struct _cmd_process *pc, subuser **iuser, acetables *g_ape);
 void register_cmd(const char *cmd, unsigned int (*func)(callbackp *), unsigned int need, acetables *g_ape);
+void free_all_hook_cmd(acetables *g_ape);
 void unregister_cmd(const char *cmd, acetables *g_ape);
 void register_bad_cmd(unsigned int (*func)(callbackp *), void *data, acetables *g_ape);
 int register_hook_cmd(const char *cmd, unsigned int (*func)(callbackp *), void *data, acetables *g_ape);

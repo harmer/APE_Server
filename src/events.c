@@ -44,6 +44,8 @@ void events_free(acetables *g_ape)
 	if (g_ape->events->handler != EVENT_UNKNOWN) {
 		free(g_ape->events->events);
 	}
+
+	g_ape->events->events = NULL;
 }
 
 int events_add(struct _fdevent *ev, int fd, int bitadd)
