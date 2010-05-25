@@ -87,14 +87,20 @@ struct _ape_sm_callback
 };
 static int ape_fire_hook(ape_sm_callback *cbk, JSObject *obj, JSObject *cb, callbackp *callbacki, acetables *g_ape);
 
+typedef struct _ape_sm_compiled_script ape_sm_compiled_script;
+struct _ape_sm_compiled_script {
+	char *filename;
+	JSScript *bytecode;
+	JSObject *scriptObj;
+	ape_sm_compiled_script *next;
+};
+
 typedef struct _ape_sm_compiled ape_sm_compiled;
 struct _ape_sm_compiled {
-	char *filename;
-	
-	JSScript *bytecode;
+	ape_sm_compiled_script *compiled;
+
 	JSContext *cx;
 	JSObject *global;
-	JSObject *scriptObj;
 	
 	acetables *g_ape;
 	
@@ -1623,9 +1629,8 @@ APE_JS_NATIVE(ape_sm_hook_cmd)
 APE_JS_NATIVE(ape_sm_include)
 //{
 	const char *file;
-	JSScript *bytecode;
+	ape_sm_compiled_script *compiled;
 	jsval frval;
-	char rpath[512];
 	
 	if (argc != 1) {
 		return JS_TRUE;
@@ -1635,27 +1640,39 @@ APE_JS_NATIVE(ape_sm_include)
 		return JS_TRUE;
 	}
 	
-	memset(rpath, '\0', sizeof(rpath));
-	strncpy(rpath, READ_CONF("scripts_path"), 255);
-	strncat(rpath, file, 255);
+	compiled = xmalloc(sizeof(*compiled));
+
+	compiled->filename = xmalloc(256);
+	memset(compiled->filename, 0, 256);
+
+	strncpy(compiled->filename, READ_CONF("scripts_path"), 255);
+	strncat(compiled->filename, file, 255);
 	
 	if (!g_ape->is_daemon) {
-		printf("[JS] Loading script %s...\n", rpath);
+		printf("[JS] Loading script %s...\n", compiled->filename);
 	}
 
-	bytecode = JS_CompileFile(cx, JS_GetGlobalObject(cx), rpath);
+	compiled->bytecode = JS_CompileFile(cx, JS_GetGlobalObject(cx), compiled->filename);
 	
-	if (bytecode == NULL) {
+	if (compiled->bytecode == NULL) {
 		if (!g_ape->is_daemon) {
-			printf("[JS] Failed loading script %s\n", rpath);
-		}		
+			printf("[JS] Failed loading script %s\n", compiled->filename);
+		}
+		free(compiled->filename);
+		free(compiled);
+
 		return JS_TRUE;
+	} else {
+		compiled->next = asc->compiled;
+		asc->compiled = compiled;
 	}
+
+	compiled->scriptObj = JS_NewScriptObject(cx, asc->compiled->bytecode);
 
 	/* Adding to the root (prevent the script to be GC collected) */
-//	JS_AddNamedRoot(cx, &scriptObj, file);
-	
-	JS_ExecuteScript(cx, JS_GetGlobalObject(cx), bytecode, &frval);	
+	JS_AddNamedRoot(cx, &compiled->scriptObj, compiled->filename);
+
+	JS_ExecuteScript(cx, JS_GetGlobalObject(cx), compiled->bytecode, &frval);	
 	
 	return JS_TRUE;
 }
@@ -2915,13 +2932,10 @@ static void init_module(acetables *g_ape) // Called when module is loaded
 	for (i = 0; i < globbuf.gl_pathc; i++) {
 		ape_sm_compiled *asc = xmalloc(sizeof(*asc));
 	
-		asc->filename = (void *)xstrdup(globbuf.gl_pathv[i]);
-
 		asc->cx = JS_NewContext(rt, 8192);
 		//JS_SetGCZeal(asc->cx, 2);
 		
 		if (asc->cx == NULL) {
-			free(asc->filename);
 			free(asc);
 			continue;
 		}
@@ -2940,13 +2954,15 @@ static void init_module(acetables *g_ape) // Called when module is loaded
 			/* define the Ape Object */
 			ape_sm_define_ape(asc, gcx, g_ape);
 
-			asc->bytecode = JS_CompileFile(asc->cx, asc->global, asc->filename);
-			
-			if (asc->bytecode != NULL) {
-				asc->scriptObj = JS_NewScriptObject(asc->cx, asc->bytecode);
+			asc->compiled = xmalloc(sizeof(*asc->compiled));
+			asc->compiled->filename = (void *)xstrdup(globbuf.gl_pathv[i]);
+			asc->compiled->next = NULL;
+			asc->compiled->bytecode = JS_CompileFile(asc->cx, JS_GetGlobalObject(asc->cx), asc->compiled->filename);
+			if (asc->compiled->bytecode != NULL) {
+				asc->compiled->scriptObj = JS_NewScriptObject(asc->cx, asc->compiled->bytecode);
 
 				/* Adding to the root (prevent the script to be GC collected) */
-				JS_AddNamedRoot(asc->cx, &asc->scriptObj, asc->filename);
+				JS_AddNamedRoot(asc->cx, &asc->compiled->scriptObj, asc->compiled->filename);
 
 				/* put the Ape table on the script structure */
 				asc->g_ape = g_ape;
@@ -2955,14 +2971,18 @@ static void init_module(acetables *g_ape) // Called when module is loaded
 				asc->callbacks.foot = NULL;
 				
 				/* Run the script */
-				JS_ExecuteScript(asc->cx, asc->global, asc->bytecode, &rval);
-				
+				JS_ExecuteScript(asc->cx, JS_GetGlobalObject(asc->cx), asc->compiled->bytecode, &rval);
 			}
 		//JS_EndRequest(asc->cx);
 		//JS_ClearContextThread(asc->cx);
 
-		if (asc->bytecode == NULL) {
-			/* cleaning memory */
+		if (asc->compiled->bytecode == NULL) {
+			if (!g_ape->is_daemon) {
+				printf("[JS] Failed loading script %s\n", asc->compiled->filename);
+			}
+
+			free(asc->compiled->filename);
+			free(asc->compiled);
 		} else {
 			asc->next = asr->scripts;
 			asr->scripts = asc;
@@ -2982,7 +3002,15 @@ static void free_module(acetables *g_ape) // Called when module is unloaded
 	ape_sm_compiled *prev_asc;
 
 	while (asc != NULL) {
-		free(asc->filename);
+
+		/* Dispose compiled files */
+		while (asc->compiled) {
+			ape_sm_compiled_script *prev = asc->compiled;
+			asc->compiled = asc->compiled->next;
+			JS_RemoveRoot(asc->cx, &prev->scriptObj);
+			free(prev->filename);
+		}
+
 		JS_DestroyContext(asc->cx);
 		prev_asc = asc;
 		asc = asc->next;
