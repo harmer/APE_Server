@@ -476,6 +476,11 @@ static json_item *jsobj_to_ape_json(JSContext *cx, JSObject *json_obj)
 				break;
 		}
 	}
+
+	if (!isarray) {
+		JS_DestroyIdArray(cx, enumjson);
+	}
+
 	return ape_json;
 }
 
