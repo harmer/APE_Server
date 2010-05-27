@@ -155,6 +155,12 @@ void process_http(ape_socket *co, acetables *g_ape)
 		return;
 	}
 
+	if (http->hcount > 128) {
+		http->error = 1;
+		shutdown(co->fd, 2);
+		return;
+	}
+
 	/* 0 will be erased by the next read()'ing loop */
 	data[buffer->length] = '\0';
 	
@@ -260,6 +266,7 @@ void process_http(ape_socket *co, acetables *g_ape)
 				if ((hl = parse_header_line(data)) != NULL) {
 					hl->next = http->hlines;
 					http->hlines = hl;
+					http->hcount++;
 					if (strcasecmp(hl->key.val, "host") == 0) {
 						http->host = hl->value.val;
 					}

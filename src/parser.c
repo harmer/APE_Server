@@ -61,6 +61,7 @@ ape_parser parser_init_http(ape_socket *co)
 	http = http_parser.data;
 	
 	http->hlines = NULL;
+	http->hcount = 0;
 	http->pos = 0;
 	http->contentlength = -1;
 	http->read = 0;

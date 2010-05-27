@@ -84,6 +84,7 @@ typedef struct _http_state http_state;
 struct _http_state
 {
 	struct _http_header_line *hlines;
+	int hcount;
 	
 	char *uri;
 	
