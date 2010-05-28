@@ -229,6 +229,8 @@ int process_cmd(json_item *ijson, struct _cmd_process *pc, subuser **iuser, acet
 						send_raw_inline((retval.client_close->fd == pc->client->fd ? pc->client : sub->client), pc->transport, newraw, g_ape);
 						
 						shutdown(retval.client_close->fd, 2);
+
+						retval.client_close->attach = NULL;
 					}
 					sub->client = cp.client = retval.client_listener;
 					sub->state = retval.substate;
