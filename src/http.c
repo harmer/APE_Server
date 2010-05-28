@@ -155,7 +155,7 @@ void process_http(ape_socket *co, acetables *g_ape)
 		return;
 	}
 
-	if (http->hcount > 128) {
+	if ((http->hcount > 128) || (buffer->length > MAX_CONTENT_LENGTH)) {
 		http->error = 1;
 		shutdown(co->fd, 2);
 		return;
