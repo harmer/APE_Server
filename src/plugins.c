@@ -87,7 +87,7 @@ void findandloadplugin(acetables *g_ape)
 			/* Calling entry point load function */
 			load(pcurrent);
 				
-			plugin_read_config(pcurrent, CONFIG_VAL(Config, modules_conf, g_ape->srv));
+			plugin_read_conf(pcurrent, CONFIG_VAL(Config, modules_conf, g_ape->srv));
 			
 			if (!g_ape->is_daemon) {
 				printf("[Module] [%s] Loading module : %s (%s) - %s\n", pcurrent->modulename, pcurrent->infos->name, pcurrent->infos->version, pcurrent->infos->author);
@@ -149,7 +149,18 @@ plug_config *plugin_parse_conf(const char *file)
 	return new_conf;
 }
 
-void plugin_read_config(ace_plugins *plug, const char *path)
+void plugin_free_conf(struct _plug_config *conf)
+{
+	while (conf != NULL) {
+		plug_config *prev = conf;
+		conf = conf->next;
+		free(prev->key);
+		free(prev->value);
+		free(prev);
+	}
+}
+
+void plugin_read_conf(ace_plugins *plug, const char *path)
 {
 	char conf_file[1024];
 	if (plug->infos->conf_file != NULL) {

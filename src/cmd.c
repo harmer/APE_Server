@@ -41,6 +41,20 @@ void do_register(acetables *g_ape)
 	register_cmd("SESSION",     cmd_session,	NEED_SESSID, g_ape);
 }
 
+void do_unregister(acetables *g_ape)
+{
+	unregister_cmd("CONNECT", g_ape);
+	unregister_cmd("SCRIPT", g_ape);
+
+	unregister_cmd("CHECK", g_ape);
+	unregister_cmd("SEND", g_ape);
+
+	unregister_cmd("QUIT", g_ape);
+	unregister_cmd("JOIN", g_ape);
+	unregister_cmd("LEFT", g_ape);
+	unregister_cmd("SESSION", g_ape);
+}
+
 void register_cmd(const char *cmd, unsigned int (*func)(callbackp *), unsigned int need, acetables *g_ape)
 {
 	callback *new_cmd, *old_cmd;
@@ -65,6 +79,7 @@ void register_bad_cmd(unsigned int (*func)(callbackp *), void *data, acetables *
 	
 	new_cmd = xmalloc(sizeof(*new_cmd));
 
+	new_cmd->cmd = NULL;
 	new_cmd->func = func;
 	new_cmd->next = g_ape->bad_cmd_callbacks;
 	new_cmd->data = data;
@@ -103,6 +118,13 @@ void free_all_hook_cmd(acetables *g_ape)
 	while (g_ape->cmd_hook.head != NULL) {
 		callback_hook *prev = g_ape->cmd_hook.head;
 		g_ape->cmd_hook.head = g_ape->cmd_hook.head->next;
+		free((char *)prev->cmd);
+		free(prev);
+	}
+
+	while (g_ape->bad_cmd_callbacks != NULL) {
+		callback_hook *prev = g_ape->bad_cmd_callbacks;
+		g_ape->bad_cmd_callbacks = g_ape->bad_cmd_callbacks->next;
 		free(prev);
 	}
 
@@ -127,6 +149,7 @@ int call_cmd_hook(const char *cmd, callbackp *cp, acetables *g_ape)
 
 void unregister_cmd(const char *cmd, acetables *g_ape)
 {
+	free(hashtbl_seek(g_ape->hCallback, cmd));
 	hashtbl_erase(g_ape->hCallback, cmd);
 }
 

@@ -51,6 +51,7 @@ unsigned int checkcmd(clientget *cget, transport_t transport, subuser **iuser, a
 
 
 void do_register(acetables *g_ape);
+void do_unregister(acetables *g_ape);
 
 /* Flag returned by cmd callback */
 

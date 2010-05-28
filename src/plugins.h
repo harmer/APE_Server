@@ -82,7 +82,8 @@ ace_plugins *loadplugin(char *file);
 void findandloadplugin(acetables *g_ape);
 void free_all_plugins(acetables *g_ape);
 struct _plug_config *plugin_parse_conf(const char *file);
-void plugin_read_config(ace_plugins *plug, const char *path);
+void plugin_free_conf(struct _plug_config *conf);
+void plugin_read_conf(ace_plugins *plug, const char *path);
 char *plugin_get_conf(struct _plug_config *conf, char *key);
 
 #endif

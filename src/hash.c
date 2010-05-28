@@ -56,7 +56,7 @@ HTBL *hashtbl_init()
 	return htbl;
 }
 
-void hashtbl_free(HTBL *htbl)
+void hashtbl_free(HTBL *htbl, int free_addrs)
 {
 	size_t i;
 	HTBL_ITEM *hTmp;
@@ -67,7 +67,9 @@ void hashtbl_free(HTBL *htbl)
 		while (hTmp != 0) {
 			hNext = hTmp->next;
 			free(hTmp->key);
-			hTmp->key = NULL;
+			if (free_addrs) {
+				free(hTmp->addrs);
+			}
 			free(hTmp);
 			hTmp = hNext;
 		}

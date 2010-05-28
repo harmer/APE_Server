@@ -209,6 +209,7 @@ void close_socket(int fd, acetables *g_ape)
 
 	if (co->buffer_in.data != NULL) {
 		free(co->buffer_in.data);
+		memset(&co->buffer_in, 0, sizeof(co->buffer_in));
 	}
 
 	if (co->parser.data != NULL) {

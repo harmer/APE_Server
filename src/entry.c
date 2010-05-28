@@ -315,24 +315,26 @@ int main(int argc, char **argv)
 
 	transport_free(g_ape);
 
-	hashtbl_free(g_ape->hLogin);
-	hashtbl_free(g_ape->hSessid);
-	hashtbl_free(g_ape->hLusers);
-	hashtbl_free(g_ape->hPubid);
+	hashtbl_free(g_ape->hLogin, 0);
+	hashtbl_free(g_ape->hSessid, 0);
+	hashtbl_free(g_ape->hLusers, 0);
+	hashtbl_free(g_ape->hPubid, 0);
 	
-	hashtbl_free(g_ape->hCallback);
+	do_unregister(g_ape);
+	hashtbl_free(g_ape->hCallback, 1);
 	
-	free(g_ape->bufout);
-
 	ape_config_free(srv);
 
 	int i;
 	for (i = 0; i < g_ape->basemem; i++) {
 		if (g_ape->co[i] != NULL) {
+			close_socket(i, g_ape);
 			free(g_ape->co[i]);
 		}
 	}
 	free(g_ape->co);
+
+	free(g_ape->bufout);
 
 	free_all_hook_cmd(g_ape);
 	free_all_plugins(g_ape);

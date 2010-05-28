@@ -121,6 +121,19 @@ struct _ticks_callback *get_timer_identifier(unsigned int identifier, acetables 
 	return NULL;
 }
 
+struct _ticks_callback *get_first_unprotected_timer(acetables *g_ape) {
+	struct _ticks_callback *timers = g_ape->timers.timers;
+	
+	while (timers != NULL) {
+		if (!timers->protect) {
+			return timers;
+		}
+		timers = timers->next;
+	}
+	
+	return NULL;
+}
+
 void del_timer_identifier(unsigned int identifier, acetables *g_ape)
 {
 	struct _ticks_callback *timers = g_ape->timers.timers;

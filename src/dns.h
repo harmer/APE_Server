@@ -35,7 +35,7 @@ struct query {
 	enum dns_type qtyp;		/* type of the query */
 };
 
-void ape_dns_init();
+void ape_dns_init(acetables* g_ape);
 void ape_gethostbyname(char *name, void (*callback)(char *, void *, acetables *), void *data, acetables *g_ape);
 
 #endif

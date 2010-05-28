@@ -60,6 +60,7 @@ ape_socket *ape_connect(char *ip, int port, acetables *g_ape);
 void ape_connect_name(char *name, int port, ape_socket *pattern, acetables *g_ape);
 void prepare_ape_socket(int fd, acetables *g_ape);
 void setnonblocking(int fd);
+void close_socket(int fd, acetables *g_ape);
 int sendf(int sock, acetables *g_ape, char *buf, ...);
 int sendbin(int sock, const char *bin, unsigned int len, unsigned int burn_after_writing, acetables *g_ape);
 void safe_shutdown(int sock, acetables *g_ape);

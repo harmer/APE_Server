@@ -618,6 +618,8 @@ APE_JS_NATIVE(apepipe_sm_destroy)
 		return JS_TRUE;
 	}
 	
+	del_property(&pipe->properties, "cx");
+
 	JS_SetPrivate(cx, obj, (void *)NULL);
 	destroy_pipe(pipe, g_ape);
 	
@@ -1187,11 +1189,7 @@ static void sm_sock_onaccept(ape_socket *client, acetables *g_ape)
 			JS_DefineFunctions(cb->asc->cx, obj, apesocket_funcs);
 			params[0] = OBJECT_TO_JSVAL(sock_obj->client_obj);
 			
-			//JS_AddRoot(cb->asc->cx, &params[0]);
-			
 			JS_CallFunctionName(cb->asc->cx, cb->server_obj, "onAccept", 1, params, &rval);
-			
-			//JS_RemoveRoot(cb->asc->cx, &params[0]);
 			
 		//JS_EndRequest(cb->asc->cx);
 		//JS_ClearContextThread(cb->asc->cx);			
@@ -1515,7 +1513,6 @@ APE_JS_NATIVE(ape_sm_register_bad_cmd)
 	}
 	JS_AddRoot(cx, &ascb->func);
 	
-	/* TODO : Effacer si déjà existant (RemoveRoot & co) */
 	ascb->next = NULL;
 	ascb->type = APE_BADCMD;
 	ascb->cx = cx;
@@ -1560,7 +1557,6 @@ APE_JS_NATIVE(ape_sm_register_cmd)
 	}
 	JS_AddRoot(cx, &ascb->func);
 	
-	/* TODO : Effacer si déjà existant (RemoveRoot & co) */
 	ascb->next = NULL;
 	ascb->type = APE_CMD;
 	ascb->cx = cx;
@@ -1609,7 +1605,6 @@ APE_JS_NATIVE(ape_sm_hook_cmd)
 	}
 	JS_AddRoot(cx, &ascb->func);
 	
-	/* TODO : Effacer si déjà existant (RemoveRoot & co) */
 	ascb->next = NULL;
 	ascb->type = APE_HOOK;
 	ascb->cx = cx;
@@ -2021,6 +2016,8 @@ APE_JS_NATIVE(ape_sm_config)
 	value = plugin_get_conf(config, key);
 	
 	*rval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx, value));
+
+	plugin_free_conf(config);
 	
 	return JS_TRUE;
 }
@@ -2064,9 +2061,6 @@ static void ape_sm_timer_wrapper(struct _ape_sm_timer *params, int *last)
 			JS_CallFunctionValue(params->cx, params->global, params->func, params->argc, params->argv, &rval);
 		}
 		if (params->cleared) { /* JS_CallFunctionValue can set params->Cleared to true */
-			ape_sm_compiled *asc;
-			asc = JS_GetContextPrivate(params->cx);
-
 			if (!*last) {
 				*last = 1;
 			}
@@ -2282,9 +2276,6 @@ APE_JS_NATIVE(ape_sm_pipe_constructor)
 	add_property(&pipe->properties, "cx", cx, EXTEND_POINTER, EXTEND_ISPRIVATE);
 	
 	JS_SetPrivate(cx, obj, pipe);
-	
-	/* TODO : This private data must be removed is the pipe is destroyed */
-
 	
 	return JS_TRUE;
 }
@@ -2957,6 +2948,11 @@ static void init_module(acetables *g_ape) // Called when module is loaded
 			asc->compiled = xmalloc(sizeof(*asc->compiled));
 			asc->compiled->filename = (void *)xstrdup(globbuf.gl_pathv[i]);
 			asc->compiled->next = NULL;
+
+			if (!g_ape->is_daemon) {
+				printf("[JS] Loading script %s...\n", asc->compiled->filename);
+			}
+
 			asc->compiled->bytecode = JS_CompileFile(asc->cx, JS_GetGlobalObject(asc->cx), asc->compiled->filename);
 			if (asc->compiled->bytecode != NULL) {
 				asc->compiled->scriptObj = JS_NewScriptObject(asc->cx, asc->compiled->bytecode);
@@ -2996,12 +2992,38 @@ static void init_module(acetables *g_ape) // Called when module is loaded
 
 static void free_module(acetables *g_ape) // Called when module is unloaded
 {
-	// TODO free other allocated objects
-
 	ape_sm_compiled *asc = ASMR->scripts;
 	ape_sm_compiled *prev_asc;
 
 	while (asc != NULL) {
+
+		del_property(&g_ape->properties, "user_proto");
+		del_property(&g_ape->properties, "subuser_proto");
+		del_property(&g_ape->properties, "channel_proto");
+		del_property(&g_ape->properties, "pipe_proto");
+
+		/* Clear all timers */
+		struct _ticks_callback *tc;
+		while ((tc = get_first_unprotected_timer(g_ape)) != NULL) {
+			struct _ape_sm_timer *params = (struct _ape_sm_timer *)tc->params;
+			int last = 1;
+			params->cleared = 1;
+			ape_sm_timer_wrapper(params, &last);
+			del_timer_identifier(tc->identifier, g_ape);
+		}
+
+		/* Dispose all callbacks */
+		while (asc->callbacks.head != NULL) {
+			ape_sm_callback *prev = asc->callbacks.head;
+			asc->callbacks.head = asc->callbacks.head->next;
+			JS_RemoveRoot(asc->cx, &prev->func);
+			if (prev->callbackname != NULL) {
+				free(prev->callbackname);
+			}
+			free(prev);
+		}
+
+		// TODO RemoveRoot & obj: sock servers/clients, users, subusers, channels, awaiting mysql callbacks
 
 		/* Dispose compiled files */
 		while (asc->compiled) {
@@ -3009,6 +3031,7 @@ static void free_module(acetables *g_ape) // Called when module is unloaded
 			asc->compiled = asc->compiled->next;
 			JS_RemoveRoot(asc->cx, &prev->scriptObj);
 			free(prev->filename);
+			free(prev);
 		}
 
 		JS_DestroyContext(asc->cx);
@@ -3018,9 +3041,11 @@ static void free_module(acetables *g_ape) // Called when module is unloaded
 	}
 
 	JS_DestroyContext(ASMC);
-	JS_DestroyRuntime(ASMR->runtime);
+	del_property(&g_ape->properties, "sm_context");
 
+	JS_DestroyRuntime(ASMR->runtime);
 	free(ASMR);
+	del_property(&g_ape->properties, "sm_runtime");
 }
 
 static USERS *ape_cb_add_user(USERS *allocated, acetables *g_ape)
