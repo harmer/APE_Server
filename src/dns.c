@@ -45,6 +45,7 @@
 
 
 static enum dns_class qcls = DNS_C_IN;
+static unsigned int dns_timer_id = 0;
 
 static struct query *query_new(const char *name, const unsigned char *dn, enum dns_type qtyp) {
 	struct query *q = xmalloc(sizeof(*q));
@@ -201,5 +202,11 @@ void ape_dns_init(acetables *g_ape)
 
 	events_add(g_ape->events, sock, EVENT_READ|EVENT_WRITE);
 
-	add_periodical(50, 0, ape_dns_timeout, NULL, g_ape);
+	dns_timer_id = add_ticked(ape_dns_timeout, NULL)->identifier;
 }
+
+void ape_dns_free(acetables *g_ape)
+{
+	del_timer_identifier(dns_timer_id, g_ape);
+}
+

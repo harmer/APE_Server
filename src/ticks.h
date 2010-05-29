@@ -33,6 +33,7 @@ struct _ticks_callback
 	int times;
 	unsigned int identifier;
 	unsigned int protect;
+	unsigned int owner;
 
 	void *func;
 	void *params;
@@ -41,15 +42,14 @@ struct _ticks_callback
 };
 
 void process_tick(acetables *g_ape);
-struct _ticks_callback *add_timeout(unsigned int msec, void *callback, void *params, acetables *g_ape);
-struct _ticks_callback *add_periodical(unsigned int msec, int times, void *callback, void *params, acetables *g_ape);
+struct _ticks_callback *add_timeout(unsigned int msec, void *callback, void *params, unsigned int owner, acetables *g_ape);
+struct _ticks_callback *add_periodical(unsigned int msec, int times, void *callback, void *params, unsigned int owner, acetables *g_ape);
 void del_timer_identifier(unsigned int identifier, acetables *g_ape);
 struct _ticks_callback *get_timer_identifier(unsigned int identifier, acetables *g_ape);
-struct _ticks_callback *get_first_unprotected_timer(acetables *g_ape);
-int get_first_timer_ms(acetables *g_ape);
-void timers_free(acetables *g_ape);
+struct _ticks_callback *get_first_timer(unsigned int owner, acetables *g_ape);
+//void timers_free(acetables *g_ape);
 
-#define add_ticked(x, y) add_periodical(VTICKS_RATE, 0, x, y, g_ape)
+#define add_ticked(x, y) add_periodical(VTICKS_RATE, 0, x, y, (unsigned int)g_ape, g_ape)
 
 #endif
 

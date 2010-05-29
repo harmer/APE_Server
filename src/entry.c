@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 	apeconfig *srv;
 	
 	int random, im_r00t = 0, pidfd = 0, serverfd;
-	unsigned int getrandom = 0;
+	unsigned int getrandom = 0, ct_id;
 	const char *pidfile = NULL;
 	char *confs_path = NULL;
 	
@@ -289,7 +289,7 @@ int main(int argc, char **argv)
 	
 	g_ape->properties = NULL;
 
-	add_ticked(check_timeout, g_ape);
+	ct_id = add_ticked(check_timeout, g_ape)->identifier;
 	
 	do_register(g_ape);
 	
@@ -309,7 +309,9 @@ int main(int argc, char **argv)
 	
 	free(confs_path);
 
-	timers_free(g_ape);
+	ape_dns_free(g_ape);
+
+	del_timer_identifier(ct_id, g_ape);
 
 	events_free(g_ape);
 

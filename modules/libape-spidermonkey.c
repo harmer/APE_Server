@@ -2111,7 +2111,7 @@ APE_JS_NATIVE(ape_sm_set_timeout)
 		params->argv[i] = argv[i+2];
 	}
 	
-	timer = add_timeout(ms, ape_sm_timer_wrapper, params, g_ape);
+	timer = add_timeout(ms, ape_sm_timer_wrapper, params, (unsigned int)cx, g_ape);
 	timer->protect = 0;
 	params->timer = timer;
 	
@@ -2155,7 +2155,7 @@ APE_JS_NATIVE(ape_sm_set_interval)
 		params->argv[i] = argv[i+2];
 	}
 	
-	timer = add_periodical(ms, 0, ape_sm_timer_wrapper, params, g_ape);
+	timer = add_periodical(ms, 0, ape_sm_timer_wrapper, params, (unsigned int)cx, g_ape);
 	timer->protect = 0;
 	params->timer = timer;
 	
@@ -3015,7 +3015,7 @@ static void free_module(acetables *g_ape) // Called when module is unloaded
 
 		/* Clear all timers */
 		struct _ticks_callback *tc;
-		while ((tc = get_first_unprotected_timer(g_ape)) != NULL) {
+		while ((tc = get_first_timer((unsigned int)asc->cx, g_ape)) != NULL) {
 			struct _ape_sm_timer *params = (struct _ape_sm_timer *)tc->params;
 			int last = 1;
 			params->cleared = 1;

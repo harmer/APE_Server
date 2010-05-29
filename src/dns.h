@@ -36,6 +36,7 @@ struct query {
 };
 
 void ape_dns_init(acetables* g_ape);
+void ape_dns_free(acetables *g_ape);
 void ape_gethostbyname(char *name, void (*callback)(char *, void *, acetables *), void *data, acetables *g_ape);
 
 #endif
