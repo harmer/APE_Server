@@ -2941,7 +2941,11 @@ static void init_module(acetables *g_ape) // Called when module is loaded
 		//JS_SetContextThread(asc->cx);
 		//JS_BeginRequest(asc->cx);
 			
+#ifdef _USE_JS_JIT
 			JS_SetOptions(asc->cx, JSOPTION_VAROBJFIX | JSOPTION_JIT);
+#else
+			JS_SetOptions(asc->cx, JSOPTION_VAROBJFIX);
+#endif
 			JS_SetVersion(asc->cx, JSVERSION_LATEST);
 			JS_SetErrorReporter(asc->cx, reportError);
 
