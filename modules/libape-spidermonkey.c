@@ -2680,20 +2680,14 @@ static JSFunctionSpec sha1_funcs[] = {
 };
 
 
-static void ape_sm_define_ape(ape_sm_compiled *asc, JSContext *gcx, acetables *g_ape)
+static void ape_sm_define_ape_global(JSContext *gcx, acetables *g_ape)
 {
-	JSObject *obj, *b64, *sha1, *sockclient, *sockserver, *custompipe, *user, *channel, *pipe, *subuser;
-	#ifdef _USE_MYSQL
-	JSObject *jsmysql;
-	#endif
+	JSObject *user, *subuser, *channel, *pipe;
 
-	obj = JS_DefineObject(asc->cx, asc->global, "Ape", &ape_class, NULL, 0);
-	b64 = JS_DefineObject(asc->cx, obj, "base64", &b64_class, NULL, 0);
-	sha1 = JS_DefineObject(asc->cx, obj, "sha1", &sha1_class, NULL, 0);
-	user = JS_DefineObject(gcx, obj, "user", &user_class, NULL, 0);
-	subuser = JS_DefineObject(gcx, obj, "subuser", &subuser_class, NULL, 0);
-	channel = JS_DefineObject(gcx, obj, "channel", &channel_class, NULL, 0);
-	pipe = JS_DefineObject(gcx, obj, "pipe", &pipe_class, NULL, 0);
+	user = JS_DefineObject(gcx, JS_GetGlobalObject(gcx), "user", &user_class, NULL, 0);
+	subuser = JS_DefineObject(gcx, JS_GetGlobalObject(gcx), "subuser", &subuser_class, NULL, 0);
+	channel = JS_DefineObject(gcx, JS_GetGlobalObject(gcx), "channel", &channel_class, NULL, 0);
+	pipe = JS_DefineObject(gcx, JS_GetGlobalObject(gcx), "pipe", &pipe_class, NULL, 0);
 	
 	JS_DefineFunctions(gcx, user, apeuser_funcs);
 	JS_DefineFunctions(gcx, channel, apechannel_funcs);
@@ -2703,6 +2697,18 @@ static void ape_sm_define_ape(ape_sm_compiled *asc, JSContext *gcx, acetables *g
 	add_property(&g_ape->properties, "subuser_proto", subuser, EXTEND_POINTER, EXTEND_ISPRIVATE);
 	add_property(&g_ape->properties, "channel_proto", channel, EXTEND_POINTER, EXTEND_ISPRIVATE);
 	add_property(&g_ape->properties, "pipe_proto", pipe, EXTEND_POINTER, EXTEND_ISPRIVATE);
+}
+
+static void ape_sm_define_ape(ape_sm_compiled *asc)
+{
+	JSObject *obj, *b64, *sha1, *sockclient, *sockserver, *custompipe;
+	#ifdef _USE_MYSQL
+	JSObject *jsmysql;
+	#endif
+
+	obj = JS_DefineObject(asc->cx, asc->global, "Ape", &ape_class, NULL, 0);
+	b64 = JS_DefineObject(asc->cx, obj, "base64", &b64_class, NULL, 0);
+	sha1 = JS_DefineObject(asc->cx, obj, "sha1", &sha1_class, NULL, 0);
 	
 	JS_DefineFunctions(asc->cx, obj, ape_funcs);
 	JS_DefineFunctions(asc->cx, asc->global, global_funcs);
@@ -2913,6 +2919,7 @@ static void init_module(acetables *g_ape) // Called when module is loaded
 	
 	add_property(&g_ape->properties, "sm_context", gcx, EXTEND_POINTER, EXTEND_ISPRIVATE);
 	add_property(&g_ape->properties, "sm_runtime", asr, EXTEND_POINTER, EXTEND_ISPRIVATE);
+	ape_sm_define_ape_global(gcx, g_ape);
 	
 	memset(rpath, '\0', sizeof(rpath));
 	strncpy(rpath, READ_CONF("scripts_path"), 256);
@@ -2943,7 +2950,7 @@ static void init_module(acetables *g_ape) // Called when module is loaded
 			JS_InitStandardClasses(asc->cx, asc->global);
 			
 			/* define the Ape Object */
-			ape_sm_define_ape(asc, gcx, g_ape);
+			ape_sm_define_ape(asc);
 
 			asc->compiled = xmalloc(sizeof(*asc->compiled));
 			asc->compiled->filename = (void *)xstrdup(globbuf.gl_pathv[i]);
