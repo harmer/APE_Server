@@ -314,6 +314,9 @@ unsigned int sockroutine(acetables *g_ape)
 						
 						g_ape->co[new_fd]->buffer_in.data = xmalloc(sizeof(char) * (DEFAULT_BUFFER_SIZE + 1));
 						g_ape->co[new_fd]->buffer_in.size = DEFAULT_BUFFER_SIZE;
+						g_ape->co[new_fd]->buffer_in.length = 0;
+						g_ape->co[new_fd]->buffer_in.slot = NULL;
+						g_ape->co[new_fd]->buffer_in.islot = 0;
 
 						g_ape->co[new_fd]->idle = time(NULL);
 						g_ape->co[new_fd]->fd = new_fd;
