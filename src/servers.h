@@ -24,6 +24,8 @@
 
 #include "main.h"
 
+ape_socket *main_server;
+
 int servers_init(acetables *g_ape);
 
 #endif

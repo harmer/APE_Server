@@ -60,16 +60,26 @@ CHANNEL *mkchan(char *chan, int flags, acetables *g_ape)
 		
 	memcpy(new_chan->name, chan, strlen(chan)+1);
 	
+	new_chan->next = g_ape->cHead;
+	new_chan->prev = NULL;
+
 	new_chan->head = NULL;
 	new_chan->banned = NULL;
 	new_chan->properties = NULL;
 	new_chan->flags = flags | (*new_chan->name == '*' ? CHANNEL_NONINTERACTIVE : 0);
 
+	g_ape->nChannels++;
+
+	if (new_chan->next != NULL) {
+		new_chan->next->prev = new_chan;
+	}
+	g_ape->cHead = new_chan;
+
 	//memcpy(new_chan->topic, topic, strlen(topic)+1);
 
 	new_chan->pipe = init_pipe(new_chan, CHANNEL_PIPE, g_ape);
 	
-	hashtbl_append(g_ape->hLusers, chan, (void *)new_chan);
+	hashtbl_append(g_ape->hChannel, chan, (void *)new_chan);
 	
 	/* just to test */
 	//proxy_attach(proxy_init("olol", "localhost", 1337, g_ape), new_chan->pipe->pubid, 0, g_ape);
@@ -83,7 +93,7 @@ CHANNEL *getchan(const char *chan, acetables *g_ape)
 	if (strlen(chan) > MAX_CHAN_LEN) {
 		return NULL;
 	}
-	return (CHANNEL *)hashtbl_seek(g_ape->hLusers, chan);	
+	return (CHANNEL *)hashtbl_seek(g_ape->hChannel, chan);	
 }
 
 CHANNEL *getchanbypubid(const char *pubid, acetables *g_ape)
@@ -118,14 +128,32 @@ void rmchan(CHANNEL *chan, acetables *g_ape)
 	
 	rmallban(chan);
 		
-	hashtbl_erase(g_ape->hLusers, chan->name);
+	hashtbl_erase(g_ape->hChannel, chan->name);
 	
 	clear_properties(&chan->properties);
 	
 	destroy_pipe(chan->pipe, g_ape);
 	
+	g_ape->nChannels--;
+
+	if (chan->prev == NULL) {
+		g_ape->cHead = chan->next;
+	} else {
+		chan->prev->next = chan->next;
+	}
+	if (chan->next != NULL) {
+		chan->next->prev = chan->prev;
+	}
+
 	free(chan);
 	chan = NULL;
+}
+
+void rmallchan(acetables *g_ape)
+{
+	while (g_ape->cHead != NULL) {
+		rmchan(g_ape->cHead, g_ape);
+	}
 }
 
 void join(USERS *user, CHANNEL *chan, acetables *g_ape)
@@ -143,14 +171,14 @@ void join(USERS *user, CHANNEL *chan, acetables *g_ape)
 	
 	jlist = json_new_object();
 	
-	list = xmalloc(sizeof(*list)); // TODO is it free ?
+	list = xmalloc(sizeof(*list));
 	list->userinfo = user;
 	list->level = 1;
 	list->next = chan->head;
 	
 	chan->head = list;
 	
-	chanl = xmalloc(sizeof(*chanl)); // TODO is it free ?
+	chanl = xmalloc(sizeof(*chanl));
 	chanl->chaninfo = chan;
 	chanl->next = user->chan_foot;
 	
@@ -232,7 +260,9 @@ void left(USERS *user, CHANNEL *chan, acetables *g_ape) // Vider la liste chainé
 	RAW *newraw;
 	json_item *jlist;
 	
-	FIRE_EVENT_NULL(left, user, chan, g_ape);
+	if (!server_is_shutdowning) {
+		FIRE_EVENT_NULL(left, user, chan, g_ape);
+	}
 	
 	if (!isonchannel(user, chan)) {
 		return;
@@ -260,13 +290,15 @@ void left(USERS *user, CHANNEL *chan, acetables *g_ape) // Vider la liste chainé
 	
 	while (list != NULL && list->userinfo != NULL) {
 		if (list->userinfo == user) {
-			jlist = json_new_object();
+			if (!server_is_shutdowning) {
+				jlist = json_new_object();
 			
-			json_set_property_objN(jlist, "user", 4, get_json_object_user(user));
-			json_set_property_objN(jlist, "pipe", 4, get_json_object_channel(chan));
+				json_set_property_objN(jlist, "user", 4, get_json_object_user(user));
+				json_set_property_objN(jlist, "pipe", 4, get_json_object_channel(chan));
 			
-			newraw = forge_raw(RAW_LEFT, jlist);
-			post_raw(newraw, user, g_ape);
+				newraw = forge_raw(RAW_LEFT, jlist);
+				post_raw(newraw, user, g_ape);
+			}
 			
 			if (prev != NULL) {
 				prev->next = list->next;
@@ -275,7 +307,7 @@ void left(USERS *user, CHANNEL *chan, acetables *g_ape) // Vider la liste chainé
 			}
 			free(list);
 			list = NULL;
-			if (chan->head != NULL && !(chan->flags & CHANNEL_NONINTERACTIVE)) {
+			if (chan->head != NULL && !(chan->flags & CHANNEL_NONINTERACTIVE) && !server_is_shutdowning) {
 				jlist = json_new_object();
 				
 				json_set_property_objN(jlist, "user", 4, get_json_object_user(user));
@@ -301,7 +333,7 @@ userslist *getlist(const char *chan, acetables *g_ape)
 	if (strlen(chan) > MAX_CHAN_LEN) {
 		return NULL;
 	}
-	if ((lchan = (CHANNEL *)hashtbl_seek(g_ape->hLusers, chan)) == NULL) {
+	if ((lchan = (CHANNEL *)hashtbl_seek(g_ape->hChannel, chan)) == NULL) {
 		return NULL;
 	}
 	return lchan->head;

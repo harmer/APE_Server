@@ -49,8 +49,7 @@
 
 static void signal_handler(int sign)
 {
-	server_is_running = 0;
-
+	server_is_shutdowning = 1;
 }
 
 static int inc_rlimit(int nofile)
@@ -271,10 +270,9 @@ int main(int argc, char **argv)
 	g_ape->cmd_hook.head = NULL;
 	g_ape->cmd_hook.foot = NULL;
 	
-	g_ape->hLogin = hashtbl_init();
 	g_ape->hSessid = hashtbl_init();
 
-	g_ape->hLusers = hashtbl_init();
+	g_ape->hChannel = hashtbl_init();
 	g_ape->hPubid = hashtbl_init();
 	
 	g_ape->proxy.list = NULL;
@@ -283,6 +281,7 @@ int main(int argc, char **argv)
 	g_ape->hCallback = hashtbl_init();
 
 	g_ape->uHead = NULL;
+	g_ape->cHead = NULL;
 	
 	g_ape->nConnected = 0;
 	g_ape->plugins = NULL;
@@ -298,6 +297,7 @@ int main(int argc, char **argv)
 	findandloadplugin(g_ape);
 
 	server_is_running = 1;
+	server_is_shutdowning = 0;
 
 	/* Starting Up */
 	sockroutine(g_ape); /* loop */
@@ -317,9 +317,8 @@ int main(int argc, char **argv)
 
 	transport_free(g_ape);
 
-	hashtbl_free(g_ape->hLogin, 0);
 	hashtbl_free(g_ape->hSessid, 0);
-	hashtbl_free(g_ape->hLusers, 0);
+	hashtbl_free(g_ape->hChannel, 0);
 	hashtbl_free(g_ape->hPubid, 0);
 	
 	do_unregister(g_ape);

@@ -3008,11 +3008,6 @@ static void free_module(acetables *g_ape) // Called when module is unloaded
 
 	while (asc != NULL) {
 
-		del_property(&g_ape->properties, "user_proto");
-		del_property(&g_ape->properties, "subuser_proto");
-		del_property(&g_ape->properties, "channel_proto");
-		del_property(&g_ape->properties, "pipe_proto");
-
 		/* Clear all timers */
 		struct _ticks_callback *tc;
 		while ((tc = get_first_timer((unsigned int)asc->cx, g_ape)) != NULL) {
@@ -3034,7 +3029,7 @@ static void free_module(acetables *g_ape) // Called when module is unloaded
 			free(prev);
 		}
 
-		// TODO RemoveRoot & obj: sock servers/clients, users, subusers, channels, awaiting mysql callbacks
+		// TODO RemoveRoot: sock servers/clients, awaiting mysql callbacks
 
 		/* Dispose compiled files */
 		while (asc->compiled) {
@@ -3050,6 +3045,11 @@ static void free_module(acetables *g_ape) // Called when module is unloaded
 		asc = asc->next;
 		free(prev_asc);
 	}
+
+	del_property(&g_ape->properties, "user_proto");
+	del_property(&g_ape->properties, "subuser_proto");
+	del_property(&g_ape->properties, "channel_proto");
+	del_property(&g_ape->properties, "pipe_proto");
 
 	JS_DestroyContext(ASMC);
 	del_property(&g_ape->properties, "sm_context");

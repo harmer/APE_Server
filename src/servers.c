@@ -74,7 +74,6 @@ static void ape_onaccept(ape_socket *co, acetables *g_ape)
 
 int servers_init(acetables *g_ape)
 {
-	ape_socket *main_server;
 	if ((main_server = ape_listen(atoi(CONFIG_VAL(Server, port, g_ape->srv)), CONFIG_VAL(Server, ip_listen, g_ape->srv), g_ape)) == NULL) {
 		return 0;
 	}

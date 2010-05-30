@@ -48,6 +48,7 @@
 #define _VERSION "1.01dev"
 
 int server_is_running;
+int server_is_shutdowning;
 
 struct _transport_properties {
 	struct {
@@ -158,15 +159,15 @@ typedef struct _acetables
 	
 	struct _ape_transports transports;
 	
-	HTBL *hLogin;
 	HTBL *hSessid;
-	HTBL *hLusers;
+	HTBL *hChannel;
 	HTBL *hCallback;
 	HTBL *hPubid;
 
 	struct apeconfig *srv;
 	struct _callback_hook *bad_cmd_callbacks;	
 	struct USERS *uHead;
+	struct CHANNEL *cHead;
 	struct _socks_bufout *bufout;
 	struct _ace_plugins *plugins;
 	struct _fdevent *events;
@@ -178,6 +179,7 @@ typedef struct _acetables
 	int is_daemon;
 	int basemem;
 	unsigned int nConnected;
+	unsigned int nChannels;
 } acetables;
 
 

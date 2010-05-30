@@ -25,6 +25,7 @@
 #include <errno.h>
 
 #include "sock.h"
+#include "servers.h"
 #include "http.h"
 #include "users.h"
 
@@ -257,6 +258,7 @@ unsigned int sockroutine(acetables *g_ape)
 	struct _socks_list sl;
 	
 	int new_fd, nfds, sin_size = sizeof(struct sockaddr_in), i, tfd = 0;
+	int inf = 0; // users informed about shutdown
 
 	struct timeval t_start, t_end;	
 	long int ticks = 0, uticks = 0, lticks = 0;
@@ -475,7 +477,18 @@ unsigned int sockroutine(acetables *g_ape)
 				}			
 			}
 		}
-		
+
+		if (server_is_shutdowning) {
+			if (!inf) {
+				shutdown(main_server->fd, 2);
+				quit_all_users(g_ape);
+				rmallchan(g_ape);
+				inf = 1;
+			} else if (nfds == 0) {
+				server_is_running = 0;
+			}
+		}
+
 		gettimeofday(&t_end, NULL);
 		
 		ticks = 0;

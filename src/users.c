@@ -223,6 +223,32 @@ void deluser(USERS *user, acetables *g_ape)
 
 }
 
+void quit_all_users(acetables *g_ape)
+{
+	RAW *newraw;
+
+	json_item *jlist = json_new_object();
+	json_set_property_strZ(jlist, "server", "shutdown");
+
+	newraw = forge_raw("QUIT", jlist);
+	newraw->refcount++; // protect RAW against free
+	
+	while (g_ape->uHead != NULL) {
+		subuser *sub = g_ape->uHead->subuser;
+
+		post_raw(newraw, g_ape->uHead, g_ape);
+
+		while (sub != NULL) {
+			send_raws(sub, g_ape);
+			sub = sub->next;
+		}
+
+		deluser(g_ape->uHead, g_ape);
+	}
+
+	free_raw(newraw);
+}
+
 void do_died(subuser *sub)
 {
 	if (sub->state == ALIVE) {

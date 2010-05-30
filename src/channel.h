@@ -41,6 +41,9 @@ typedef struct CHANNEL
 	struct _transpipe *pipe;
 	struct userslist *head;
 	
+	struct CHANNEL *next;
+	struct CHANNEL *prev;
+
 	struct BANNED *banned;
 	
 	extend *properties;
@@ -68,6 +71,7 @@ CHANNEL *getchanbypubid(const char *pubid, acetables *g_ape);
 int mkallchan(acetables *g_ape);
 
 void rmchan(CHANNEL *chan, acetables *g_ape);
+void rmallchan(acetables *g_ape);
 
 void join(struct USERS *user, CHANNEL *chan, acetables *g_ape);
 void left(struct USERS *user, CHANNEL *chan, acetables *g_ape);

@@ -215,6 +215,7 @@ USERS *seek_user_simple(const char *nick, acetables *g_ape);
 
 
 void deluser(USERS *user, acetables *g_ape);
+void quit_all_users(acetables *g_ape);
 
 void do_died(subuser *user);
 
