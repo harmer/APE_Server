@@ -47,7 +47,7 @@ RAW *forge_raw(const char *raw, json_item *jlist)
 	string = json_to_string(jstruct, NULL, 1);
 
 	new_raw = xmalloc(sizeof(*new_raw));
-    	new_raw->len = string->len;
+	new_raw->len = string->len;
 	new_raw->next = NULL;
 	new_raw->priority = RAW_PRI_LO;
 	new_raw->refcount = 0;
@@ -62,6 +62,17 @@ RAW *forge_raw(const char *raw, json_item *jlist)
 int free_raw(RAW *fraw)
 {
 	if (--(fraw->refcount) <= 0) {
+		free(fraw->data);
+		free(fraw);
+
+		return 0;
+	}
+	return fraw->refcount;
+}
+
+int free_zombie_raw(RAW *fraw)
+{
+	if (fraw->refcount <= 0) {
 		free(fraw->data);
 		free(fraw);
 
@@ -149,15 +160,20 @@ void post_raw_channel(RAW *raw, struct CHANNEL *chan, acetables *g_ape)
 {
 	userslist *list;
 	
-	if (chan == NULL || raw == NULL || chan->head == NULL) {
+	if (raw == NULL) {
 		return;
 	}
+
+	if (chan == NULL || chan->head == NULL) {
+		free_zombie_raw(raw);
+		return;
+	}
+
 	list = chan->head;
 	while (list) {
 		post_raw(raw, list->userinfo, g_ape);
 		list = list->next;
 	}
-
 }
 
 /* Post raw to a channel and propagate it to all of it's users with a *ruser exception */
@@ -165,11 +181,16 @@ void post_raw_channel_restricted(RAW *raw, struct CHANNEL *chan, USERS *ruser, a
 {
 	userslist *list;
 	
-	if (chan == NULL || raw == NULL || chan->head == NULL) {
+	if (raw == NULL) {
 		return;
 	}
+
+	if (chan == NULL || chan->head == NULL) {
+		free_zombie_raw(raw);
+		return;
+	}
+
 	list = chan->head;
-	
 	while (list) {
 		if (list->userinfo != ruser) {
 			post_raw(raw, list->userinfo, g_ape);
