@@ -657,7 +657,7 @@ static int add_escaped_char_to_parse_buffer(JSON_parser jc, int next_char)
     assert(jc->type != JSON_T_STRING)
 
 
-int
+inline int
 JSON_parser_char(JSON_parser jc, int next_char)
 {
 /*

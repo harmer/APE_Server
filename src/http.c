@@ -29,66 +29,6 @@
 
 #define HTTP_PREFIX		"http://"
 
-struct _http_attach {
-	char host[1024];
-	char file[1024];
-	
-	const char *post;
-	unsigned short int port;
-};
-
-static struct _http_header_line *parse_header_line(const char *line)
-{
-	unsigned int i;
-	unsigned short int state = 0;
-	struct _http_header_line *hline = NULL;
-	for (i = 0; i < 1024 && line[i] != '\0' && line[i] != '\r' && line[i] != '\n'; i++) {
-		if (i == 0) {
-			hline = xmalloc(sizeof(*hline));
-			hline->key.len = 0;
-			hline->value.len = 0;
-		}
-		switch(state) {
-			case 0:
-				if ((i == 0 && (line[i] == ':' || line[i] == ' ')) || (line[i] == ':' && line[i+1] != ' ') || (i > 63)) {
-					free(hline);
-					return NULL;
-				}
-				if (line[i] == ':') {
-					hline->key.val[hline->key.len] = '\0';
-					state = 1;
-					i++;
-				} else {
-					hline->key.val[hline->key.len++] = line[i];
-				}
-				break;
-			case 1:
-				hline->value.val[hline->value.len++] = line[i];
-				break;
-		}
-	}
-	if (!state) {
-		free(hline);
-		return NULL;
-	}
-	hline->value.val[hline->value.len] = '\0';
-
-	return hline;
-}
-
-char *get_header_line(struct _http_header_line *lines, const char *key)
-{
-	while (lines != NULL) {
-		if (strcasecmp(lines->key.val, key) == 0) {
-			return lines->value.val;
-		}
-		
-		lines = lines->next;
-	}
-	
-	return NULL;
-}
-
 void process_websocket(ape_socket *co, acetables *g_ape)
 {
 	char *pData;
@@ -151,25 +91,16 @@ void process_http(ape_socket *co, acetables *g_ape)
 	char *data = buffer->data;
 	int pos, read, p = 0;
 	
-	if (buffer->length == 0 || parser->ready == 1 || http->error == 1) {
-		return;
-	}
-
-	if ((http->hcount > 128) || (buffer->length > MAX_CONTENT_LENGTH)) {
+	if (buffer->length > MAX_CONTENT_LENGTH) {
 		http->error = 1;
 		shutdown(co->fd, 2);
 		return;
 	}
 
-	/* 0 will be erased by the next read()'ing loop */
-	data[buffer->length] = '\0';
-	
-	data = &data[http->pos];
-	
-	if (*data == '\0') {
+	if (buffer->length == 0) {
 		return;
 	}
-	
+
 	/* Update the address of http->data and http->uri if buffer->data has changed (realloc) */
 	if (http->buffer_addr != NULL && buffer->data != http->buffer_addr) {
 		http->data = &buffer->data[(void *)http->data - (void *)http->buffer_addr];
@@ -177,20 +108,37 @@ void process_http(ape_socket *co, acetables *g_ape)
 		http->buffer_addr = buffer->data;
 	}
 	
-	switch(http->step) {
+	/* Setting guardians for seol_ng function */
+	/* This will be erased by the next read()'ing loop */
+	strncpy (&data[buffer->length], "\0\n\0\n\0\n\0\n", 8);
+
+	/* Processing "loop" - ugly implementation with goto, but very fast */
+start:
+	data = &buffer->data[http->pos];
+
+	if (*data == '\0') {
+		return;
+	}
+
+	switch (http->step) {
+
 		case 0:
-			pos = seof(data, '\n');
-			if (pos == -1) {
+			pos = seol_ng(data) + 1;
+
+			/* is it a guardian? */
+			if (pos > 1 && data[pos - 2] == '\0') {
 				return;
 			}
 			
-			/* TODO : endieness */
-			switch(*(unsigned int *)data) {
+			/* TODO : endian on 64-bit */
+			switch (*(unsigned int *)data & 0xffffffff) {
 				case 542393671: /* GET + space */
+				case 1195725856:
 					http->type = HTTP_GET;
 					p = 4;
 					break;
 				case 1414745936: /* POST */
+				case 1347375956:
 					http->type = HTTP_POST;
 					p = 5;
 					break;
@@ -204,6 +152,7 @@ void process_http(ape_socket *co, acetables *g_ape)
 				http->error = 1;
 				shutdown(co->fd, 2);
 				return;
+
 			} else {
 				int i = p;
 				while (p++) {
@@ -214,14 +163,13 @@ void process_http(ape_socket *co, acetables *g_ape)
 							http->uri = &data[i];
 							http->buffer_addr = buffer->data;
 							data[p] = '\0';
-							process_http(co, g_ape);
-							return;
+							goto start;
 						case '?':
 							if (data[p+1] != ' ' && data[p+1] != '\r' && data[p+1] != '\n') {
 								http->buffer_addr = buffer->data;
 								http->data = &data[p+1];
 							}
-							break;
+							break; // switch
 						case '\r':
 						case '\n':
 						case '\0':
@@ -231,26 +179,29 @@ void process_http(ape_socket *co, acetables *g_ape)
 					}
 				}
 			}
-			break;
-		case 1:
-			pos = seof(data, '\n');
-			if (pos == -1) {
 
+		case 1:
+			pos = seol_ng(data) + 1;
+
+			/* is it a guardian? */
+			if (pos > 1 && data[pos - 2] == '\0') {
 				return;
 			}
+
 			if (pos == 1 || (pos == 2 && *data == '\r')) {
 				if (http->type == HTTP_GET) {
 					/* Ok, at this point we have a blank line. Ready for GET */
 					buffer->data[http->pos] = '\0';
+					parser->ready = 1;
 					urldecode(http->uri);
-					
+
 					parser->onready(parser, g_ape);
 					parser->ready = -1;
 					buffer->length = 0;
 					return;
 				} else {
 					/* Content-Length is mandatory in case of POST */
-					if (http->contentlength == 0) {
+					if (http->contentlength <= 0) {
 						http->error = 1;
 						shutdown(co->fd, 2);
 						return;
@@ -261,19 +212,24 @@ void process_http(ape_socket *co, acetables *g_ape)
 					}
 				}
 			} else {
-				struct _http_header_line *hl;
-
-				if ((hl = parse_header_line(data)) != NULL) {
-					hl->next = http->hlines;
-					http->hlines = hl;
-					http->hcount++;
-					if (strcasecmp(hl->key.val, "host") == 0) {
-						http->host = hl->value.val;
-					}
+				data[pos - 1] = '\0';
+				if (data[pos - 2] == '\r') {
+					data[pos - 2] = '\0';
 				}
-				if (http->type == HTTP_POST) {
-					/* looking for content-length instruction */
-					if (pos <= 25 && strncasecmp("content-length: ", data, 16) == 0) {
+
+				/* Looking for Host header */
+				if (http->host == NULL && strncmp(data, "Host: ", 6) == 0) {
+					http->host = &data[6];
+				} else if (http->type == HTTP_GET) {
+
+					/* Looking for Origin header (for WebSockets Handshake) */
+					if (http->origin == NULL && strncmp(data, "Origin: ", 8) == 0) {
+						http->origin = &data[8];
+					}
+				} else {
+
+					/* Looking for Content-Length header */
+					if (http->contentlength <= 0 && pos <= 25 && strncmp("Content-Length: ", data, 16) == 0) {
 						int cl = atoi(&data[16]);
 
 						/* Content-length can't be negative... */
@@ -284,13 +240,13 @@ void process_http(ape_socket *co, acetables *g_ape)
 						}
 						/* At this time we are ready to read "cl" bytes contents */
 						http->contentlength = cl;
-
 					}
 				}
 			}
+
 			http->pos += pos;
-			process_http(co, g_ape);
-			break;
+			goto start;
+
 		case 2:
 			read = buffer->length - http->pos; // data length
 			http->pos += read;
@@ -307,128 +263,9 @@ void process_http(ape_socket *co, acetables *g_ape)
 				parser->ready = -1;
 				buffer->length = 0;
 			}
-			break;
-		default:
-			break;
-	}
+
+	} // step switch
 }
-
-
-/* taken from libevent */
-
-int parse_uri(char *url, char *host, u_short *port, char *file)
-{
-	char *p;
-	const char *p2;
-	int len;
-
-	len = strlen(HTTP_PREFIX);
-	if (strncasecmp(url, HTTP_PREFIX, len)) {
-		return -1;
-	}
-
-	url += len;
-
-	/* We might overrun */
-	strncpy(host, url, 1023);
-
-
-	p = strchr(host, '/');
-	if (p != NULL) {
-		*p = '\0';
-		p2 = p + 1;
-	} else {
-		p2 = NULL;
-	}
-	if (file != NULL) {
-		/* Generate request file */
-		if (p2 == NULL)
-			p2 = "";
-		sprintf(file, "/%s", p2);
-	}
-
-	p = strchr(host, ':');
-	
-	if (p != NULL) {
-		*p = '\0';
-		*port = atoi(p + 1);
-
-		if (*port == 0)
-			return -1;
-	} else
-		*port = 80;
-
-	return 0;
-}
-
-http_headers_response *http_headers_init(int code, char *detail, int detail_len)
-{
-	http_headers_response *headers;
-	
-	if (detail_len > 63 || (code < 100 && code >= 600)) {
-		return NULL;
-	}
-	
-	headers = xmalloc(sizeof(*headers));
-
-	headers->code = code;
-	headers->detail.len = detail_len;
-	memcpy(headers->detail.val, detail, detail_len + 1);
-	
-	headers->fields = NULL;
-	headers->last = NULL;
-	
-	return headers;
-}
-
-void http_headers_set_field(http_headers_response *headers, const char *key, int keylen, const char *value, int valuelen)
-{
-	struct _http_headers_fields *field = NULL, *look_field;
-	int value_l, key_l;
-
-	value_l = (valuelen ? valuelen : strlen(value));
-	key_l = (keylen ? keylen : strlen(key));
-	
-	if (key_l >= 32) {
-		return;
-	}
-	
-	for(look_field = headers->fields; look_field != NULL; look_field = look_field->next) {
-		if (strncasecmp(look_field->key.val, key, key_l) == 0) {
-			field = look_field;
-			break;
-		}
-	}
-	
-	if (field == NULL) {
-		field = xmalloc(sizeof(*field));
-		field->next = NULL;
-	
-		if (headers->fields == NULL) {
-			headers->fields = field;
-		} else {
-			headers->last->next = field;
-		}
-		headers->last = field;
-	} else {
-		free(field->value.val);
-	}
-	
-	field->value.val = xmalloc(sizeof(char) * (value_l + 1));
-	
-	memcpy(field->key.val, key, key_l + 1);
-	memcpy(field->value.val, value, value_l + 1);
-	
-	field->value.len = value_l;
-	field->key.len = key_l;
-
-}
-
-/*
-http_headers_response *headers = http_headers_init(200, "OK", 2);
-http_headers_set_field(headers, "Content-Length", 0, "100", 0);
-http_send_headers(headers, cget->client, g_ape);
-*/
 
 int http_send_headers(http_headers_response *headers, const char *default_h, unsigned int default_len, ape_socket *client, acetables *g_ape)
 {
@@ -482,16 +319,5 @@ void http_headers_free(http_headers_response *headers)
 		fields = tmpfields;
 	}
 	free(headers);
-}
-
-void free_header_line(struct _http_header_line *line)
-{
-	struct _http_header_line *tline;
-	
-	while (line != NULL) {
-		tline = line->next;
-		free(line);
-		line = tline;
-	}
 }
 

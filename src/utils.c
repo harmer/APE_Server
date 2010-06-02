@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <bits/wordsize.h>
 
 #include "log.h"
 
@@ -206,7 +207,7 @@ char *get_path(const char *full_path)
 	return new_path;
 }
 
-char hex2int(unsigned char hex)
+inline char hex2int(unsigned char hex)
 {
 	hex = hex - '0';
 	if (hex > 9) {
@@ -221,7 +222,7 @@ char hex2int(unsigned char hex)
 }
 
 /* taken from lighttp */
-int urldecode(char *string)
+inline int urldecode(char *string)
 {
 	unsigned char high, low;
 	const char *src;
@@ -261,4 +262,68 @@ int urldecode(char *string)
 	return 1;
 }
 
+
+/* The idea taken from book "Hacker`s Delight" by Henry S. Warren, Jr.
+ * Implementation: Dariusz Karcz <harmer@harmer.pl>
+ */
+#if __WORDSIZE == 32
+static const unsigned long mask_f5 = 0xf5f5f5f5;
+static const unsigned long mask_7f = 0x7f7f7f7f;
+static const unsigned long mask_75 = 0x75757575;
+static const unsigned long mask_pad = 0xfffffffc;
+#elif __WORDSIZE == 64
+static const unsigned long mask_f5 = 0xf5f5f5f5f5f5f5f5;
+static const unsigned long mask_7f = 0x7f7f7f7f7f7f7f7f;
+static const unsigned long mask_75 = 0x7575757575757575;
+static const unsigned long mask_pad = 0xfffffffffffffff8;
+#else
+#error Unsupported word size
+#endif
+
+#define TESTCHAR(add) \
+	if (*x == '\n') { \
+		return x - buf; \
+	} \
+	x++;
+
+#define MAGIC_CONDITION (~(((x & mask_75) + mask_7f) | (x & mask_f5) | mask_7f))
+
+/* Function returns position of \n character in string
+ * Warning: searching do not stop at null byte
+ */
+inline int seol_ng(char *buf)
+{
+	char *c;
+	unsigned long *l = (unsigned long *)((unsigned long)buf & mask_pad);
+	unsigned long x = *l;
+	l++;
+
+	if (MAGIC_CONDITION) {
+		for (c = buf; c < (char *)l; c++) {
+			if (*c == '\n') {
+				return c - buf;
+			}
+		}
+	}
+	
+	do {
+		register unsigned long x = *l;
+
+		if (MAGIC_CONDITION) {
+			char *x = (char *)l;
+			TESTCHAR(1);
+			TESTCHAR(2);
+			TESTCHAR(3);
+			TESTCHAR(4);
+#if __WORDSIZE == 64
+			TESTCHAR(5);
+			TESTCHAR(6);
+			TESTCHAR(7);
+			TESTCHAR(8);
+#endif
+		}
+	} while (l++);
+
+	return -1; /* Should not reach */
+}
 

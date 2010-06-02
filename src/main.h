@@ -35,7 +35,8 @@
 #include "hash.h"
 
 #define MAX_IO 4096
-#define DEFAULT_BUFFER_SIZE 2048
+#define BUFFER_PADDING 16
+#define DEFAULT_BUFFER_SIZE 2048 - BUFFER_PADDING
 
 #define MAX_NICK_LEN 	16 // move to module
 #define MAX_CHAN_LEN 	40
@@ -84,14 +85,12 @@ struct _ape_transports {
 typedef struct _http_state http_state;
 struct _http_state
 {
-	struct _http_header_line *hlines;
-	int hcount;
-	
 	char *uri;
 	
 	void *buffer_addr;
 	const char *data;
 	const char *host;
+	const char *origin;
 	
 	int pos;
 	int contentlength;

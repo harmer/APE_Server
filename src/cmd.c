@@ -272,7 +272,6 @@ int process_cmd(json_item *ijson, struct _cmd_process *pc, subuser **iuser, acet
 		cp.ip = pc->ip;
 		cp.chl = (sub != NULL ? sub->current_chl : 0);
 		cp.transport = pc->transport;
-		cp.hlines = pc->hlines;
 		
 		/* Little hack to access user object on connect hook callback (preallocate an user) */
 		if (strncasecmp(cp.cmd, "CONNECT", 7) == 0 && cp.cmd[7] == '\0') {
@@ -373,7 +372,7 @@ int process_cmd(json_item *ijson, struct _cmd_process *pc, subuser **iuser, acet
 
 unsigned int checkcmd(clientget *cget, transport_t transport, subuser **iuser, acetables *g_ape)
 {	
-	struct _cmd_process pc = {cget->hlines, NULL, NULL, cget->client, cget->host, cget->ip_get, transport};
+	struct _cmd_process pc = {NULL, NULL, cget->client, cget->host, cget->ip_get, transport};
 	
 	json_item *ijson, *ojson;
 	

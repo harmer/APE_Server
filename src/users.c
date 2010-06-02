@@ -518,6 +518,19 @@ subuser *addsubuser(ape_socket *client, const char *channel, USERS *user, acetab
 	return sub;
 }
 
+void send_ident(subuser *sub, acetables *g_ape)
+{
+	json_item *jlist;
+	RAW *newraw;
+
+	jlist = json_new_object();
+	json_set_property_objN(jlist, "user", 4, get_json_object_user(sub->user));
+	
+	newraw = forge_raw("IDENT", jlist);
+	newraw->priority = RAW_PRI_HI;
+	post_raw_sub(newraw, sub, g_ape);
+}
+
 void subuser_restor(subuser *sub, acetables *g_ape)
 {
 	CHANLIST *chanl;
@@ -565,13 +578,7 @@ void subuser_restor(subuser *sub, acetables *g_ape)
 		chanl = chanl->next;
 	}
 
-	jlist = json_new_object();
-	json_set_property_objN(jlist, "user", 4, get_json_object_user(user));	
-	
-	newraw = forge_raw("IDENT", jlist);
-	newraw->priority = RAW_PRI_HI;
-	post_raw_sub(newraw, sub, g_ape);
-	
+	send_ident(sub, g_ape);
 }
 
 subuser *getsubuser(USERS *user, const char *channel)

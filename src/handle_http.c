@@ -52,7 +52,6 @@ subuser *checkrecv_websocket(ape_socket *co, acetables *g_ape)
 	cget.ip_get = co->ip_client;
 	cget.get = websocket->data;
 	cget.host = websocket->http->host;
-	cget.hlines = websocket->http->hlines;
 
 	op = checkcmd(&cget, TRANSPORT_WEBSOCKET, &user, g_ape);
 
@@ -78,9 +77,8 @@ subuser *checkrecv(ape_socket *co, acetables *g_ape)
 	}
 	
 	if (gettransport(http->uri) == TRANSPORT_WEBSOCKET) {
-		char *origin = get_header_line(http->hlines, "Origin");
 		websocket_state *websocket;
-		if (origin == NULL) {
+		if (http->origin == NULL) {
 			shutdown(co->fd, 2);
 			return NULL;
 		}
@@ -88,7 +86,7 @@ subuser *checkrecv(ape_socket *co, acetables *g_ape)
 		PACK_TCP(co->fd);
 		sendbin(co->fd, CONST_STR_LEN(WEBSOCKET_HARDCODED_HEADERS), 0, g_ape);
 		sendbin(co->fd, CONST_STR_LEN("WebSocket-Origin: "), 0, g_ape);
-		sendbin(co->fd, origin, strlen(origin), 0, g_ape);
+		sendbin(co->fd, http->origin, strlen(http->origin), 0, g_ape);
 		sendbin(co->fd, CONST_STR_LEN("\r\nWebSocket-Location: ws://"), 0, g_ape);
 		sendbin(co->fd, http->host, strlen(http->host), 0, g_ape);
 		sendbin(co->fd, http->uri, strlen(http->uri), 0, g_ape);
@@ -114,7 +112,6 @@ subuser *checkrecv(ape_socket *co, acetables *g_ape)
 	cget.ip_get = co->ip_client;
 	cget.get = http->data;
 	cget.host = http->host;
-	cget.hlines = http->hlines;
 	
 	op = checkcmd(&cget, gettransport(http->uri), &user, g_ape);
 

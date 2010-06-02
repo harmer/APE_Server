@@ -133,7 +133,7 @@ ape_socket *ape_connect(char *ip, int port, acetables *g_ape)
 
 	prepare_ape_socket(sock, g_ape);
 	
-	g_ape->co[sock]->buffer_in.data = xmalloc(sizeof(char) * (DEFAULT_BUFFER_SIZE + 1));
+	g_ape->co[sock]->buffer_in.data = xmalloc(sizeof(char) * (DEFAULT_BUFFER_SIZE + BUFFER_PADDING));
 	g_ape->co[sock]->buffer_in.size = DEFAULT_BUFFER_SIZE;
 
 	g_ape->co[sock]->fd = sock;
@@ -312,7 +312,7 @@ unsigned int sockroutine(acetables *g_ape)
 	
 						strncpy(g_ape->co[new_fd]->ip_client, inet_ntoa(their_addr.sin_addr), 16);
 						
-						g_ape->co[new_fd]->buffer_in.data = xmalloc(sizeof(char) * (DEFAULT_BUFFER_SIZE + 1));
+						g_ape->co[new_fd]->buffer_in.data = xmalloc(sizeof(char) * (DEFAULT_BUFFER_SIZE + BUFFER_PADDING));
 						g_ape->co[new_fd]->buffer_in.size = DEFAULT_BUFFER_SIZE;
 						g_ape->co[new_fd]->buffer_in.length = 0;
 						g_ape->co[new_fd]->buffer_in.slot = NULL;
@@ -447,7 +447,7 @@ unsigned int sockroutine(acetables *g_ape)
 										g_ape->co[active_fd]->buffer_in.size *= 2;
 
 										g_ape->co[active_fd]->buffer_in.data = xrealloc(g_ape->co[active_fd]->buffer_in.data, 
-																sizeof(char) * (g_ape->co[active_fd]->buffer_in.size + 1));
+																sizeof(char) * (g_ape->co[active_fd]->buffer_in.size + BUFFER_PADDING));
 
 									}
 									if (g_ape->co[active_fd]->callbacks.on_read_lf != NULL) {

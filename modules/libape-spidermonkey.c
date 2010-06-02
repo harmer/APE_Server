@@ -1428,14 +1428,12 @@ static unsigned int ape_sm_cmd_wrapper(callbackp *callbacki)
 {
 	acetables *g_ape = callbacki->g_ape;
 	ape_sm_compiled *asc = ASMR->scripts;
-	struct _http_header_line *hlines;
 	
 	json_item *head = callbacki->param;
 	JSContext *cx = ASMC;
 	
 	JSObject *obj; // param object
 	JSObject *cb; // cmd object
-	JSObject *hl; // http object
 	
 	if (asc == NULL) {
 		return (RETURN_NOTHING);
@@ -1455,14 +1453,6 @@ static unsigned int ape_sm_cmd_wrapper(callbackp *callbacki)
 		jval = STRING_TO_JSVAL(JS_NewStringCopyZ(cx, callbacki->host));
 		/* infos.host */	
 		JS_SetProperty(cx, cb, "host", &jval);
-		
-		hl = JS_DefineObject(cx, cb, "http", NULL, NULL, 0);		
-		
-		for (hlines = callbacki->hlines; hlines != NULL; hlines = hlines->next) {
-			s_tolower(hlines->key.val, hlines->key.len);
-			jval = STRING_TO_JSVAL(JS_NewStringCopyN(cx, hlines->value.val, hlines->value.len));
-			JS_SetProperty(cx, hl, hlines->key.val, &jval);
-		}
 		
 		jval = OBJECT_TO_JSVAL(sm_ape_socket_to_jsobj(cx, callbacki->client));
 		JS_SetProperty(cx, cb, "client", &jval);
@@ -1831,7 +1821,7 @@ APE_JS_NATIVE(ape_sm_adduser)
 	
 	adduser(NULL, NULL, NULL, u, g_ape);
 	
-	subuser_restor(u->subuser, g_ape);
+	send_ident(u->subuser, g_ape);
 	
 	jstr = json_new_object();	
 	json_set_property_strN(jstr, "sessid", 6, u->sessid, 32);
@@ -1844,7 +1834,7 @@ APE_JS_NATIVE(ape_sm_adduser)
 	if (u->cmdqueue != NULL) {
 		unsigned int ret;
 		json_item *queue;
-		struct _cmd_process pc = {NULL, u, u->subuser, u->subuser->client, NULL, NULL, 0};
+		struct _cmd_process pc = {u, u->subuser, u->subuser->client, NULL, NULL, 0};
 		
 		for (queue = u->cmdqueue; queue != NULL; queue = queue->next) {
 			if ((ret = process_cmd(queue, &pc, NULL, g_ape)) != -1) {

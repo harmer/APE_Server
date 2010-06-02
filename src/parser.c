@@ -26,7 +26,6 @@
 
 static void parser_destroy_http(ape_parser *http_parser)
 {
-	free_header_line(((http_state *)http_parser->data)->hlines);
 	free(http_parser->data);
 	http_parser->data = NULL;
 	http_parser->ready = 0;
@@ -60,8 +59,6 @@ ape_parser parser_init_http(ape_socket *co)
 	
 	http = http_parser.data;
 	
-	http->hlines = NULL;
-	http->hcount = 0;
 	http->pos = 0;
 	http->contentlength = -1;
 	http->read = 0;
@@ -71,6 +68,7 @@ ape_parser parser_init_http(ape_socket *co)
 	http->uri = NULL;
 	http->data = NULL;
 	http->host = NULL;
+	http->origin = NULL;
 	http->buffer_addr = NULL;
 
 	http_parser.parser_func = process_http;
@@ -86,8 +84,6 @@ static void parser_destroy_stream(ape_parser *stream_parser)
 {
 	websocket_state *websocket = stream_parser->data;
 	
-	free_header_line(websocket->http->hlines);
-
 	stream_parser->data = NULL;
 	stream_parser->ready = 0;
 	stream_parser->parser_func = NULL;

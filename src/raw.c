@@ -293,6 +293,8 @@ int send_raw_inline(ape_socket *client, transport_t transport, RAW *raw, acetabl
 	
 	properties = transport_get_properties(transport, g_ape);
 	
+	PACK_TCP(client->fd); /* Activate TCP_CORK */
+	
 	switch(transport) {
 		case TRANSPORT_XHRSTREAMING:
 			finish &= http_send_headers(NULL, HEADER_XHR, HEADER_XHR_LEN, client, g_ape);
@@ -323,6 +325,8 @@ int send_raw_inline(ape_socket *client, transport_t transport, RAW *raw, acetabl
 	
 	free_raw(raw);
 	
+	FLUSH_TCP(client->fd);
+
 	return finish;
 }
 
