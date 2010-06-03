@@ -130,15 +130,13 @@ start:
 				return;
 			}
 			
-			/* TODO : endian on 64-bit */
-			switch (*(unsigned int *)data & 0xffffffff) {
-				case 542393671: /* GET + space */
-				case 1195725856:
+			/* Checking first character is enough */
+			switch (*data) {
+				case 'G':
 					http->type = HTTP_GET;
 					p = 4;
 					break;
-				case 1414745936: /* POST */
-				case 1347375956:
+				case 'P':
 					http->type = HTTP_POST;
 					p = 5;
 					break;
