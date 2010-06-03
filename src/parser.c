@@ -44,9 +44,13 @@ static void parser_ready_http(ape_parser *http_parser, acetables *g_ape)
 
 static void parser_ready_websocket(ape_parser *websocket_parser, acetables *g_ape)
 {
+	subuser *sub;
 	ape_socket *co = websocket_parser->socket;
 	
-	co->attach = checkrecv_websocket(co, g_ape);
+	sub = checkrecv_websocket(co, g_ape);
+	if (co->attach == NULL) {
+		co->attach = sub;
+	}
 }
 
 ape_parser parser_init_http(ape_socket *co)
@@ -90,6 +94,7 @@ static void parser_destroy_stream(ape_parser *stream_parser)
 	stream_parser->destroy = NULL;
 	stream_parser->socket = NULL;
 	
+	free(websocket->http->host);
 	free(websocket->http);
 	free(websocket);	
 }

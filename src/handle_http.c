@@ -96,7 +96,9 @@ subuser *checkrecv(ape_socket *co, acetables *g_ape)
 		co->parser = parser_init_stream(co);
 		websocket = co->parser.data;
 		websocket->http = http; /* keep http data */
-		
+
+		http->host = xstrdup(http->host); /* copy http host from sock buffer_in */
+
 		return NULL;
 	}
 

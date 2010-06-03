@@ -295,18 +295,24 @@ int send_raw_inline(ape_socket *client, transport_t transport, RAW *raw, acetabl
 	
 	PACK_TCP(client->fd); /* Activate TCP_CORK */
 	
-	switch(transport) {
-		case TRANSPORT_XHRSTREAMING:
-			finish &= http_send_headers(NULL, HEADER_XHR, HEADER_XHR_LEN, client, g_ape);
-			break;
-		case TRANSPORT_SSE_LONGPOLLING:
-			finish &= http_send_headers(NULL, HEADER_SSE, HEADER_SSE_LEN, client, g_ape);
-			break;
-		case TRANSPORT_WEBSOCKET:
-			break;
-		default:
-			finish &= http_send_headers(NULL, HEADER_DEFAULT, HEADER_DEFAULT_LEN, client, g_ape);
-			break;
+	if (client->attach == NULL || !((subuser *)(client->attach))->headers.sent) {
+		if (client->attach) {
+			((subuser *)(client->attach))->headers.sent = 1;
+		}
+
+		switch(transport) {
+			case TRANSPORT_XHRSTREAMING:
+				finish &= http_send_headers(NULL, HEADER_XHR, HEADER_XHR_LEN, client, g_ape);
+				break;
+			case TRANSPORT_SSE_LONGPOLLING:
+				finish &= http_send_headers(NULL, HEADER_SSE, HEADER_SSE_LEN, client, g_ape);
+				break;
+			case TRANSPORT_WEBSOCKET:
+				break;
+			default:
+				finish &= http_send_headers(NULL, HEADER_DEFAULT, HEADER_DEFAULT_LEN, client, g_ape);
+				break;
+		}
 	}
 	
 	if (properties != NULL && properties->padding.left.val != NULL) {

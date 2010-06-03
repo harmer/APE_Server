@@ -88,8 +88,8 @@ struct _http_state
 	char *uri;
 	
 	void *buffer_addr;
+	char *host;
 	const char *data;
-	const char *host;
 	const char *origin;
 	
 	int pos;

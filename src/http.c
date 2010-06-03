@@ -42,7 +42,7 @@ void process_websocket(ape_socket *co, acetables *g_ape)
 		return;
 	}
 	
-	if (buffer->length > 502400) {
+	if (buffer->length > MAX_CONTENT_LENGTH) {
 		shutdown(co->fd, 2);
 		return;
 	}
