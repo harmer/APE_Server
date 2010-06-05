@@ -3197,6 +3197,7 @@ static void ape_cb_left(USERS *user, CHANNEL *chan, acetables *g_ape)
 	
 	left(user, chan, g_ape);
 
+	APE_JS_EVENT("afterLeft", 2, params);
 }
 
 static void ape_cb_addsubuser(subuser *sub, acetables *g_ape)
