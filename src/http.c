@@ -103,14 +103,24 @@ void process_http(ape_socket *co, acetables *g_ape)
 
 	/* Update the address of http->data and http->uri if buffer->data has changed (realloc) */
 	if (http->buffer_addr != NULL && buffer->data != http->buffer_addr) {
-		http->data = &buffer->data[(void *)http->data - (void *)http->buffer_addr];
-		http->uri = &buffer->data[(void *)http->uri - (void *)http->buffer_addr];
+		if (http->data != NULL) {
+			http->data = &buffer->data[(void *)http->data - (void *)http->buffer_addr];
+		}
+		if (http->uri != NULL) {
+			http->uri = &buffer->data[(void *)http->uri - (void *)http->buffer_addr];
+		}
+		if (http->host != NULL) {
+			http->host = &buffer->data[(void *)http->host - (void *)http->buffer_addr];
+		}
+		if (http->origin != NULL) {
+			http->origin = &buffer->data[(void *)http->origin - (void *)http->buffer_addr];
+		}
 		http->buffer_addr = buffer->data;
 	}
 	
 	/* Setting guardians for seol_ng function */
 	/* This will be erased by the next read()'ing loop */
-	strncpy (&data[buffer->length], "\0\n\0\n\0\n\0\n", 8);
+	memcpy (&data[buffer->length], "\0\n\0\n\0\n\0\n", 8);
 
 	/* Processing "loop" - ugly implementation with goto, but very fast */
 start:
