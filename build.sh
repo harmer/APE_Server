@@ -23,7 +23,7 @@ then
     echo "HAS_MYSQL = yes" > ./modules/mysql.mk
 	echo "#define _USE_MYSQL 1" >> ./src/configure.h
 	cd ./modules/deps/mysac/
-	make
+	make clean && make
 	cd ../../../
 else
 	echo "HAS_MYSQL = 0" > ./modules/mysql.mk
@@ -40,9 +40,12 @@ else
 fi
 
 cd ./deps/udns-0.0.9/
-make clean && ./configure && make
+./configure && make clean && make
 cd ../js/src/
-./configure && make
+./configure && make clean && make
 cd ../../../
-make
-cd ./modules/ && make
+make clean && make
+cd ./modules/
+make clean && make
+cd ../
+

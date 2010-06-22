@@ -3,6 +3,7 @@ include ./mysql.mk
 include ../debug.mk
 
 CC=gcc -D_GNU_SOURCE
+RM=rm -f
 
 ifeq ($(HAS_MYSQL), yes)
 	MYSQL_FLAGS = -L./deps/mysac/ -I./deps/mysac/ -lmysac -lmysqlclient_r
@@ -34,3 +35,6 @@ modules: libape-spidermonkey.c
 	$(CC) $(CFLAGS) -shared -fPIC -rdynamic -Wl,-soname,libmod_spidermonkey.so -o lib/libmod_spidermonkey.so libape-spidermonkey.c -I../deps/js/src/dist/include/ -L../deps/js/src/ -ljs_static -lstdc++ $(MYSQL_FLAGS)
 
 endif
+
+clean:
+	$(RM) lib/libmod_spidermonkey.so

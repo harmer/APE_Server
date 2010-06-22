@@ -55,7 +55,7 @@ inline void process_tick(acetables *g_ape)
 	}
 }
 
-struct _ticks_callback *add_timeout(unsigned int msec, void *callback, void *params, unsigned int owner, acetables *g_ape)
+struct _ticks_callback *add_timeout(unsigned int msec, void *callback, void *params, void *owner, acetables *g_ape)
 {
 	struct _ticks_callback *timers = g_ape->timers.timers;
 	struct _ticks_callback *prev = NULL;
@@ -99,7 +99,7 @@ struct _ticks_callback *add_timeout(unsigned int msec, void *callback, void *par
 /* Exec callback "times"x each "sec" */
 /* If "times" is 0, the function is executed indefinitifvly */
 
-struct _ticks_callback *add_periodical(unsigned int msec, int times, void *callback, void *params, unsigned int owner, acetables *g_ape)
+struct _ticks_callback *add_periodical(unsigned int msec, int times, void *callback, void *params, void *owner, acetables *g_ape)
 {
 	struct _ticks_callback *new_timer = add_timeout(msec, callback, params, owner, g_ape);
 
@@ -145,7 +145,7 @@ void del_timer_identifier(unsigned int identifier, acetables *g_ape)
 }
 
 /* Returns closest timer execution time (in ms) */
-inline struct _ticks_callback *get_first_timer(unsigned int owner, acetables *g_ape)
+inline struct _ticks_callback *get_first_timer(void *owner, acetables *g_ape)
 {
 	struct _ticks_callback *timers = g_ape->timers.timers;
 
